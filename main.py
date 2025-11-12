@@ -23,3 +23,5 @@ all_category = soup.find('div', class_='js-content-block-tab').find_all('div', c
 for item in all_category:
     item_titles = item.find('div', class_='product').get('data-name')
 
+
+
