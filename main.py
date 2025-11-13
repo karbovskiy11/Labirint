@@ -31,7 +31,8 @@ for item in all_category:
                      find('a',class_='product-pubhouse__pubhouse').get('title'))
     try:
         item_series = ': ' + (item.find('div', class_='product').find('div', class_='product-pubhouse').
-        find_next('a',class_='product-pubhouse__series').get('title'))
+        find_next('a',class_='product-pubhouse__series').get(
+            'title'))
     except:
         item_series = ''
 
