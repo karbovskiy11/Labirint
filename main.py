@@ -37,6 +37,9 @@ all_category = soup.find('div', class_='js-content-block-tab').find_all('div', c
 
 all_books = []
 numeration = 1
+cout_page = soup.find('div', class_='pagination-number__right').find('div', class_='pagination-number').find_next('a').text
+
+
 for item in all_category:
     item_titles = item.find('div', class_='product').get('data-name')
     item_price = int(item.find('div', class_='product').get('data-price'))
@@ -67,7 +70,7 @@ for item in all_category:
         )
     numeration += 1
 
-# print(all_books)
+# print(cout_page)
 
 
 
