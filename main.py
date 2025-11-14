@@ -1,3 +1,5 @@
+import csv
+
 from bs4 import BeautifulSoup
 import requests
 
@@ -14,6 +16,20 @@ headers = {
 # with open('index.html', 'w', encoding='utf-8') as file:
 #     file.write(response)
 
+with open('labirint_books.csv', 'w', newline='', encoding='utf-8') as csvfile:
+    csvwriter = csv.writer(csvfile, delimiter=',')
+    csvwriter.writerow(
+        (
+            '№',
+            'Название',
+            'Автор',
+            'Издательство',
+            'Цена',
+            'Цена с учётом скидки',
+            'Скидка'
+        )
+    )
+
 with open('index.html', 'r', encoding='utf-8') as file:
     index = file.read()
 
@@ -21,6 +37,7 @@ soup = BeautifulSoup(index, 'lxml')
 all_category = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
 
 all_books = []
+numeration = 1
 for item in all_category:
     item_titles = item.find('div', class_='product').get('data-name')
     item_price = int(item.find('div', class_='product').get('data-price'))
@@ -31,8 +48,7 @@ for item in all_category:
                      find('a',class_='product-pubhouse__pubhouse').get('title'))
     try:
         item_series = ': ' + (item.find('div', class_='product').find('div', class_='product-pubhouse').
-        find_next('a',class_='product-pubhouse__series').get(
-            'title'))
+        find_next('a',class_='product-pubhouse__series').get('title'))
     except:
         item_series = ''
 
@@ -40,12 +56,13 @@ for item in all_category:
 
     all_books.append(
         (
+            numeration,
             item_titles,
+            item_author,
+            item_pubhouse_series,
             item_price,
             item_discount_price,
-            item_sale,
-            item_author,
-            item_pubhouse_series
+            item_sale
         )
     )
 
