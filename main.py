@@ -1,7 +1,6 @@
-import csv
-
 from bs4 import BeautifulSoup
 import requests
+import csv
 
 url = 'https://www.labirint.ru/genres/1852/'
 
@@ -47,26 +46,28 @@ for item in all_category:
     item_pubhouse = (item.find('div', class_='product').find('div', class_='product-pubhouse').
                      find('a',class_='product-pubhouse__pubhouse').get('title'))
     try:
-        item_series = ': ' + (item.find('div', class_='product').find('div', class_='product-pubhouse').
-        find_next('a',class_='product-pubhouse__series').get('title'))
+        item_series = ': ' + (item.find('div', class_='product').find('div', class_='product-pubhouse').find('a',class_='product-pubhouse__series').get('title'))
     except:
         item_series = ''
 
     item_pubhouse_series = item_pubhouse + item_series
 
-    all_books.append(
-        (
-            numeration,
-            item_titles,
-            item_author,
-            item_pubhouse_series,
-            item_price,
-            item_discount_price,
-            item_sale
+    with open('labirint_books.csv', 'a', newline='', encoding='utf-8') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        csvwriter.writerow(
+            (
+                numeration,
+                item_titles,
+                item_author,
+                item_pubhouse_series,
+                item_price,
+                item_discount_price,
+                item_sale
+            )
         )
-    )
+    numeration += 1
 
-print(all_books)
+# print(all_books)
 
 
 
