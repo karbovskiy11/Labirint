@@ -62,7 +62,7 @@ def main():
     data_books(all_category)
 
 def data_books(all_category):
-        # собираем данные о книге
+    # собираем данные о книге
     data = []
     numeration = 1
     for item in all_category:
