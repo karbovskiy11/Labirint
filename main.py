@@ -2,6 +2,10 @@ from bs4 import BeautifulSoup
 import requests
 import csv
 import os.path
+import time
+import random
+
+NUM = 1
 
 def get_headers():
     headers = {
@@ -10,12 +14,29 @@ def get_headers():
     }
     return headers
 
-def get_url(page, headers):
-    with open('index.html', 'r', encoding='utf-8') as file:
-        response = file.read()
+def get_page(page):
+    print('получаю страницу')
+    # with open('index.html', 'r', encoding='utf-8') as file:
+    #     response = file.read()
+    headers = {
+        'accept': '*/*',
+        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+    }
+
+    url = f'https://www.labirint.ru/genres/1852/?page={page}'
+    request = requests.get(url, headers=headers)
+
+    if request.status_code == 200:
+        print('YES')
+    else:
+        print('NO')
+
+
     # url = f'https://www.labirint.ru/genres/1852/?page={page}'
     # request = requests.get(url, headers)
-    # response = request.text
+    response = request.text
+    print(f'Page completed')
+    time.sleep(random.randrange(2, 4))
     return response
 
 def get_count_paginations(soup):
@@ -31,7 +52,7 @@ def create_directories():
     os.makedirs('data', exist_ok=True)
 
 def create_labirint_books():
-    with open('labirint_books.csv', 'w', newline='', encoding='utf-8') as csvfile:
+    with open('data/labirint_books.csv', 'w', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(
             (
@@ -45,26 +66,10 @@ def create_labirint_books():
             )
         )
 
-def main():
-    # create_labirint_books()
-    headers = get_headers()
-    create_directories()
-    numeration = 1
-
-    first_page_content = get_url(1, headers)
-    if not first_page_content:
-        print('Неудалось загрузить первую страницу')
-        return
-
-    soup = BeautifulSoup(first_page_content, 'lxml')
-    count_page = get_count_paginations(soup)
-    all_category = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
-    data_books(all_category)
-
-def data_books(all_category):
+def labirint_books(all_category):
     # собираем данные о книге
+
     data = []
-    numeration = 1
     for item in all_category:
         product = item.find('div', class_='product')
         if not product:
@@ -89,8 +94,9 @@ def data_books(all_category):
             item_sale = '0%'
 
         # автор книги
-        item_author = product.find('div', class_='product-author').find('a').get('title')
-        if not item_author:
+        try:
+            item_author = product.find('div', class_='product-author').find('a').get('title')
+        except:
             item_author = 'Автор не указан'
 
         # издательство и издательская серя книги
@@ -104,25 +110,50 @@ def data_books(all_category):
             item_series = ''
         item_pubhouse_series = item_pubhouse + item_series
         data.append(
-            (
-                numeration,
+            [
+                NUM,
                 item_titles,
                 item_author,
                 item_pubhouse_series,
                 item_price,
                 item_discount_price,
                 item_sale
-            )
+            ]
         )
-        numeration += 1
+
     write_data_books(data)
+    print(data)
+
+
 
 def write_data_books(data):          #
+    print('Записываю данные!')
+
     with open(f'data/labirint_books.csv', 'a', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerows(data)
 
-print(f'Page completed')
+
+
+def main():
+    # headers = get_headers()
+    create_directories()
+    create_labirint_books()
+
+    first_page_content = get_page(1)
+    if not first_page_content:
+        print('Неудалось загрузить первую страницу')
+        return
+
+    soup = BeautifulSoup(first_page_content, 'lxml')
+    count_page = get_count_paginations(soup)
+
+    # for page in range(2, count_page + 1):
+    for page in range(1, 3):
+        soup = BeautifulSoup(get_page(page), 'lxml')
+        all_category = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
+        labirint_books(all_category)
+
 
 if __name__ == "__main__":
     main()
