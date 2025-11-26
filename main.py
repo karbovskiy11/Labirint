@@ -5,154 +5,104 @@ import os.path
 import time
 import random
 
-NUM = 1
-
-def get_headers():
-    headers = {
-        'accept': '*/*',
-        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
-    }
-    return headers
 
 def get_page(page):
-    print('получаю страницу')
-    # with open('index.html', 'r', encoding='utf-8') as file:
-    #     response = file.read()
     headers = {
         'accept': '*/*',
         'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
     }
 
     url = f'https://www.labirint.ru/genres/1852/?page={page}'
-    request = requests.get(url, headers=headers)
 
-    if request.status_code == 200:
-        print('YES')
-    else:
-        print('NO')
-
-
-    # url = f'https://www.labirint.ru/genres/1852/?page={page}'
-    # request = requests.get(url, headers)
+    request = requests.get(url=url, headers=headers)
     response = request.text
-    print(f'Page completed')
+    save_page(page, response)
+    soup = BeautifulSoup(response, 'lxml')
     time.sleep(random.randrange(2, 4))
-    return response
+    return soup
 
-def get_count_paginations(soup):
-    count_page = int(soup.find('div', class_='pagination-number__right').find('div', class_='pagination-number').find_next('a').text)
-    if count_page:
-        return count_page
-    else:
-        count_page = 1
-        return count_page
+
+def save_page(page, response):
+    with open(f'pages/page_{page}.html', 'w', encoding='utf-8') as html_file:
+        html_file.write(response)
+
 
 def create_directories():
-    os.makedirs('pages', exist_ok=True)
     os.makedirs('data', exist_ok=True)
+    os.makedirs('pages', exist_ok=True)
 
-def create_labirint_books():
-    with open('data/labirint_books.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        csvwriter = csv.writer(csvfile, delimiter=',')
+    with open(f'data/books.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        csvwriter = csv.writer(csvfile)
         csvwriter.writerow(
             (
-                '№',
-                'Название',
-                'Автор',
+                # '№',
+                'Наименование',
+                'цена',
+                'цена со скидкой',
                 'Издательство',
-                'Цена',
-                'Цена с учётом скидки',
-                'Скидка'
+                'серия',
+                'автор'
             )
         )
 
-def labirint_books(all_category):
-    # собираем данные о книге
 
-    data = []
-    for item in all_category:
-        product = item.find('div', class_='product')
-        if not product:
-            continue    # пропустить элемент, если нет основного блока
+def get_data(item):
+    product = item.find('div', class_='product')
+    title = product.get('data-name')
+    price = product.get('data-price')
+    price_discount = product.get('data-discount-price')
 
-        # название книги
-        item_titles = product.get('data-name')
-        if not item_titles:
-            item_titles = 'Название не указано'
+    try:
+        pubhouse_series = ': ' + product.get('data-series')
+    except AttributeError:
+        pubhouse_series = ''
 
-        # цена книги (начальная, со скидкой, размер скидки)
-        try:
-            item_price = int(product.get('data-price', 0))
-            item_discount_price = int(product.get('data-discount-price', 0))
-            if item_price > 0:
-                item_sale = f'{round(item_discount_price / item_price * 100)}%'
-            else:
-                item_sale = '0%'
-        except(ValueError, TypeError):
-            item_price = 0
-            item_discount_price = 0
-            item_sale = '0%'
+    pubhouse = product.get('data-pubhouse') + pubhouse_series
 
-        # автор книги
-        try:
-            item_author = product.find('div', class_='product-author').find('a').get('title')
-        except:
-            item_author = 'Автор не указан'
+    try:
+        author = product.find('div', class_='product-author').find('a').get('title')
+    except AttributeError:
+        author = 'Автор отсутствует'
 
-        # издательство и издательская серя книги
-        product_pubhouse = product.find('div', class_='product-pubhouse')
-        item_pubhouse = product_pubhouse.find('a', class_='product-pubhouse__pubhouse').get('title')
-        if not item_pubhouse:
-            item_pubhouse = 'Идательство не указано'
-        try:
-            item_series = ': ' + product_pubhouse.find('a',class_='product-pubhouse__series').get('title')
-        except(AttributeError):
-            item_series = ''
-        item_pubhouse_series = item_pubhouse + item_series
-        data.append(
-            [
-                NUM,
-                item_titles,
-                item_author,
-                item_pubhouse_series,
-                item_price,
-                item_discount_price,
-                item_sale
-            ]
-        )
-
-    write_data_books(data)
-    print(data)
+    # books = [
+    #     # numeration,
+    #     title,
+    #     price,
+    #     price_discount,
+    #     pubhouse,
+    #     pubhouse_series,
+    #     author
+    # ]
+    return [
+        # numeration,
+        title,
+        price,
+        price_discount,
+        pubhouse,
+        pubhouse_series,
+        author]
+    # print(books)
 
 
-
-def write_data_books(data):          #
-    print('Записываю данные!')
-
-    with open(f'data/labirint_books.csv', 'a', newline='', encoding='utf-8') as csvfile:
+def write_in_file(data):
+    with open(f'data/books.csv', 'a', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerows(data)
-
+        csvwriter.writerow(data)
 
 
 def main():
-    # headers = get_headers()
     create_directories()
-    create_labirint_books()
+    first_page = get_page(1)
+    count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
 
-    first_page_content = get_page(1)
-    if not first_page_content:
-        print('Неудалось загрузить первую страницу')
-        return
-
-    soup = BeautifulSoup(first_page_content, 'lxml')
-    count_page = get_count_paginations(soup)
-
-    # for page in range(2, count_page + 1):
-    for page in range(1, 3):
-        soup = BeautifulSoup(get_page(page), 'lxml')
-        all_category = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
-        labirint_books(all_category)
+    for page in range(1, count_page + 1):
+        soup_page = get_page(page)
+        all_books_cards = soup_page.find('div', class_='js-content-block-tab').find_all('div',
+                                                                                        class_='genres-carousel__item')
+        for item in all_books_cards:
+            data = get_data(item)
+            write_in_file(data)
+        print(f'Парсинг {page} страницы завершён!')
 
 
 if __name__ == "__main__":
