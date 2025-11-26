@@ -9,7 +9,8 @@ import random
 def get_page(page):
     headers = {
         'accept': '*/*',
-        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
     }
 
     url = f'https://www.labirint.ru/genres/1852/?page={page}'
@@ -35,7 +36,7 @@ def create_directories():
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(
             (
-                # '№',
+                '№',
                 'Наименование',
                 'цена',
                 'цена со скидкой',
@@ -64,27 +65,16 @@ def get_data(item):
     except AttributeError:
         author = 'Автор отсутствует'
 
-    # books = [
-    #     # numeration,
-    #     title,
-    #     price,
-    #     price_discount,
-    #     pubhouse,
-    #     pubhouse_series,
-    #     author
-    # ]
     return [
-        # numeration,
         title,
         price,
         price_discount,
         pubhouse,
         pubhouse_series,
         author]
-    # print(books)
 
 
-def write_in_file(data):
+def write_in_file(data, page):
     with open(f'data/books.csv', 'a', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(data)
@@ -94,14 +84,17 @@ def main():
     create_directories()
     first_page = get_page(1)
     count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
+    count = 1
 
     for page in range(1, count_page + 1):
         soup_page = get_page(page)
-        all_books_cards = soup_page.find('div', class_='js-content-block-tab').find_all('div',
-                                                                                        class_='genres-carousel__item')
-        for item in all_books_cards:
+        all_cards = soup_page.find('div', class_='js-content-block-tab').find_all('div',class_='genres-carousel__item')
+        for item in all_cards:
             data = get_data(item)
-            write_in_file(data)
+            data = [count] + data
+            write_in_file(data, page)
+            count += 1
+            print(data)
         print(f'Парсинг {page} страницы завершён!')
 
 
