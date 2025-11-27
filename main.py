@@ -1,3 +1,5 @@
+import json
+
 from bs4 import BeautifulSoup
 import requests
 import csv
@@ -47,7 +49,7 @@ def create_directories():
         )
 
 
-def get_data(item):
+def get_data(item, count):
     product = item.find('div', class_='product')
     title = product.get('data-name')
     price = product.get('data-price')
@@ -65,19 +67,24 @@ def get_data(item):
     except AttributeError:
         author = 'Автор отсутствует'
 
-    return [
-        title,
-        price,
-        price_discount,
-        pubhouse,
-        pubhouse_series,
-        author]
+    return  {
+        'N': count,
+        'title': title,
+        'price': price,
+        'price_discount': price_discount,
+        'pubhouse': pubhouse,
+        'pubhouse_series': pubhouse_series,
+        'author': author
+    }
 
 
-def write_in_file(data, page):
+def write_in_file(data):
     with open(f'data/books.csv', 'a', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow(data)
+        csvwriter.writerow(data.values())
+
+    with open(f'data/books.json', 'a', encoding='utf-8') as json_file:
+        json.dump(data, json_file, indent=4, ensure_ascii=False)
 
 
 def main():
@@ -86,16 +93,21 @@ def main():
     count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
     count = 1
 
+    data_json = []
     for page in range(1, count_page + 1):
-        soup_page = get_page(page)
-        all_cards = soup_page.find('div', class_='js-content-block-tab').find_all('div',class_='genres-carousel__item')
+        soup = get_page(page)
+        all_cards = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
         for item in all_cards:
-            data = get_data(item)
-            data = [count] + data
-            write_in_file(data, page)
+            data = get_data(item, count)
+            data_json.append(data)
+            # data.insert(0, count)
+            write_in_file(data)
             count += 1
-            print(data)
-        print(f'Парсинг {page} страницы завершён!')
+            # print(data)
+        print(f'Парсинг страницы {page} завершён!')
+
+    with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
+        json.dump(data_json, json_file, indent=4, ensure_ascii=False)
 
 
 if __name__ == "__main__":
