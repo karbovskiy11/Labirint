@@ -40,11 +40,11 @@ def create_directories():
             (
                 '№',
                 'Наименование',
-                'цена',
-                'цена со скидкой',
+                'Автор',
                 'Издательство',
-                'серия',
-                'автор'
+                'Цена',
+                'Цена со скидкой',
+                'Скидка'
             )
         )
 
@@ -52,8 +52,9 @@ def create_directories():
 def get_data(item, count):
     product = item.find('div', class_='product')
     title = product.get('data-name')
-    price = product.get('data-price')
-    price_discount = product.get('data-discount-price')
+    price = int(product.get('data-price'))
+    price_discount = int(product.get('data-discount-price'))
+    discount = round(100 - ((price_discount / price) * 100))
 
     try:
         pubhouse_series = ': ' + product.get('data-series')
@@ -70,11 +71,11 @@ def get_data(item, count):
     return  {
         'N': count,
         'title': title,
+        'author': author,
+        'pubhouse': pubhouse,
         'price': price,
         'price_discount': price_discount,
-        'pubhouse': pubhouse,
-        'pubhouse_series': pubhouse_series,
-        'author': author
+        'discount': discount
     }
 
 
@@ -82,9 +83,6 @@ def write_in_file(data):
     with open(f'data/books.csv', 'a', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(data.values())
-
-    with open(f'data/books.json', 'a', encoding='utf-8') as json_file:
-        json.dump(data, json_file, indent=4, ensure_ascii=False)
 
 
 def main():
@@ -100,10 +98,8 @@ def main():
         for item in all_cards:
             data = get_data(item, count)
             data_json.append(data)
-            # data.insert(0, count)
             write_in_file(data)
             count += 1
-            # print(data)
         print(f'Парсинг страницы {page} завершён!')
 
     with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
