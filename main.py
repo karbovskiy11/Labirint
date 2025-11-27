@@ -1,11 +1,10 @@
-import json
-
 from bs4 import BeautifulSoup
 import requests
 import csv
 import os.path
 import time
 import random
+import json
 
 
 def get_page(page):
@@ -17,12 +16,18 @@ def get_page(page):
 
     url = f'https://www.labirint.ru/genres/1852/?page={page}'
 
-    request = requests.get(url=url, headers=headers)
-    response = request.text
-    save_page(page, response)
-    soup = BeautifulSoup(response, 'lxml')
-    time.sleep(random.randrange(2, 4))
-    return soup
+    try:
+        response = requests.get(url=url, headers=headers)
+        response.raise_for_status()
+        print(f'Страница {page} загружена.')
+        save_page(page, response.text)
+        soup = BeautifulSoup(response.text, 'lxml')
+        time.sleep(random.randrange(2, 4))
+        return soup
+
+    except requests.exceptions.HTTPError as e:
+        print(f'Ошибка {e} ')
+        return None
 
 
 def save_page(page, response):
@@ -68,7 +73,7 @@ def get_data(item, count):
     except AttributeError:
         author = 'Автор отсутствует'
 
-    return  {
+    return {
         'N': count,
         'title': title,
         'author': author,
@@ -88,22 +93,27 @@ def write_in_file(data):
 def main():
     create_directories()
     first_page = get_page(1)
-    count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
-    count = 1
+    if first_page:
+        count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
+        count = 1
 
-    data_json = []
-    for page in range(1, count_page + 1):
-        soup = get_page(page)
-        all_cards = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
-        for item in all_cards:
-            data = get_data(item, count)
-            data_json.append(data)
-            write_in_file(data)
-            count += 1
-        print(f'Парсинг страницы {page} завершён!')
+        data_json = []
+        for page in range(1, count_page + 1):
+            if page > 1:
+                soup = get_page(page)
+                all_cards = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
+            else:
+                all_cards = first_page.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
 
-    with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
-        json.dump(data_json, json_file, indent=4, ensure_ascii=False)
+            for item in all_cards:
+                data = get_data(item, count)
+                data_json.append(data)
+                write_in_file(data)
+                count += 1
+            print(f'Парсинг страницы {page} завершён!')
+
+        with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
+            json.dump(data_json, json_file, indent=4, ensure_ascii=False)
 
 
 if __name__ == "__main__":
