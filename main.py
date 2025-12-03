@@ -17,16 +17,23 @@ def get_page(page):
     url = f'https://www.labirint.ru/genres/1852/?page={page}'
 
     try:
-        response = requests.get(url=url, headers=headers)
+        response = requests.get(url=url, headers=headers, timeout=10)
         response.raise_for_status()
-        print(f'Страница {page} загружена.')
         save_page(page, response.text)
         soup = BeautifulSoup(response.text, 'lxml')
         time.sleep(random.randrange(2, 4))
         return soup
-
-    except requests.exceptions.HTTPError as e:
-        print(f'Ошибка {e} ')
+    except requests.exceptions.HTTPError as error:
+        print(f'Не удалось загрузить страницу {page}: ошибка {error} ')
+        return None
+    except requests.exceptions.ConnectionError:
+        print(f'Ошибка соединения на странице {page}')
+        return None
+    except requests.exceptions.Timeout:
+        print(f'Таймаут на странице {page}')
+        return None
+    except requests.exceptions.RequestException as error:
+        print(f'Общая ошибка на странице {page}: ошибка {error}')
         return None
 
 
@@ -56,32 +63,37 @@ def create_directories():
 
 def get_data(item, count):
     product = item.find('div', class_='product')
-    title = product.get('data-name')
-    price = int(product.get('data-price'))
-    price_discount = int(product.get('data-discount-price'))
-    discount = round(100 - ((price_discount / price) * 100))
+    if product:
+        title = product.get('data-name')
+        price = int(product.get('data-price'))
+        if price > 0:
+            price_discount = int(product.get('data-discount-price'))
+            discount = round(100 - ((price_discount / price) * 100))
+        else:
+            price_discount = 0
+            discount = 0
 
-    try:
-        pubhouse_series = ': ' + product.get('data-series')
-    except AttributeError:
-        pubhouse_series = ''
+        try:
+            pubhouse_series = ': ' + product.get('data-series')
+        except AttributeError:
+            pubhouse_series = ''
 
-    pubhouse = product.get('data-pubhouse') + pubhouse_series
+        pubhouse = (product.get('data-pubhouse') + pubhouse_series).strip()
 
-    try:
-        author = product.find('div', class_='product-author').find('a').get('title')
-    except AttributeError:
-        author = 'Автор отсутствует'
+        try:
+            author = product.find('div', class_='product-author').find('a').get('title')
+        except AttributeError:
+            author = 'Автор отсутствует'
 
-    return {
-        'N': count,
-        'title': title,
-        'author': author,
-        'pubhouse': pubhouse,
-        'price': price,
-        'price_discount': price_discount,
-        'discount': discount
-    }
+        return {
+            'N': count,
+            'title': title,
+            'author': author,
+            'pubhouse': pubhouse,
+            'price': price,
+            'price_discount': price_discount,
+            'discount': discount
+        }
 
 
 def write_in_file(data):
@@ -93,28 +105,37 @@ def write_in_file(data):
 def main():
     create_directories()
     first_page = get_page(1)
-    if first_page:
-        count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
-        count = 1
+    if not first_page:
+        print('Первая страница не загружена. Невозможно продолжить парсинг!')
+        return
 
-        data_json = []
-        for page in range(1, count_page + 1):
-            if page > 1:
-                soup = get_page(page)
-                all_cards = soup.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
-            else:
-                all_cards = first_page.find('div', class_='js-content-block-tab').find_all('div', class_='genres-carousel__item')
+    count_page = int(first_page.find('div', class_='pagination-numbers__right').find_all('a')[-1].text)
+    print(f'Найдено {count_page} страниц.')
+    count = 1
 
-            for item in all_cards:
-                data = get_data(item, count)
-                data_json.append(data)
-                write_in_file(data)
-                count += 1
-            print(f'Парсинг страницы {page} завершён!')
+    data_json = []
+    for page in range(1, count_page + 1):
+        print(f'Страница {page} загружена.')
+        if page > 1:
+            soup = get_page(page)
+            if soup is None:
+                continue
+            all_cards = soup.find('div', class_='js-content-block-tab')
+        else:
+            all_cards = first_page.find('div', class_='js-content-block-tab')
 
-        with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
-            json.dump(data_json, json_file, indent=4, ensure_ascii=False)
+        book_items = all_cards.find_all('div', class_='genres-carousel__item')
+        for item in book_items:
+            data = get_data(item, count)
+            data_json.append(data)
+            write_in_file(data)
+            count += 1
+        print(f'Парсинг страницы {page} завершён!')
 
+    with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
+        json.dump(data_json, json_file, indent=4, ensure_ascii=False)
+
+    print(f'Парсинг окончен!')
 
 if __name__ == "__main__":
     main()
