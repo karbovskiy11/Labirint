@@ -130,12 +130,12 @@ def main():
             data_json.append(data)
             write_in_file(data)
             count += 1
-        print(f'Парсинг страницы {page} завершён!')
+        print(f'Парсинг страницы {page} завершён.')
 
     with open(f'data/books.json', 'w', encoding='utf-8') as json_file:
         json.dump(data_json, json_file, indent=4, ensure_ascii=False)
 
-    print(f'Парсинг окончен!')
+    print(f'Парсинг окончен.')
 
 if __name__ == "__main__":
     main()
